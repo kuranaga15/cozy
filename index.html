@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>雨の日の部屋</title>
+<style>
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #14100e;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    min-height: 100vh;
+  }
+
+  .stage-outer {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    background: #0c0a08;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    line-height: 0;
+  }
+
+  .stage img {
+    width: 100%;
+    height: auto;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+
+  .resize-handle {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(58, 47, 36, 0.85);
+    border: 2px solid #f2c98a;
+    cursor: nwse-resize;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .resize-handle::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-right: 3px solid #f2c98a;
+    border-bottom: 3px solid #f2c98a;
+  }
+
+  .pet-zone {
+    position: absolute;
+    z-index: 3;
+    cursor: pointer;
+    border-radius: 14px;
+  }
+
+  .pet-zone.edit-mode {
+    border: 2px dashed #f2c98a;
+    background: rgba(242, 201, 138, 0.15);
+    cursor: move;
+  }
+
+  .pet-zone.edit-mode.selected {
+    border-color: #ff9a4d;
+    background: rgba(255, 154, 77, 0.22);
+  }
+
+  .zone-label {
+    position: absolute;
+    top: -24px;
+    left: 0;
+    background: #3a2c47;
+    color: #ffffff;
+    font-size: 11px;
+    padding: 3px 9px;
+    border-radius: 8px;
+    white-space: nowrap;
+    font-family: sans-serif;
+    pointer-events: none;
+  }
+
+  .zone-resize-handle {
+    position: absolute;
+    right: -9px;
+    bottom: -9px;
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    background: rgba(58, 47, 36, 0.9);
+    border: 2px solid #f2c98a;
+    cursor: nwse-resize;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .zone-resize-handle::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid #f2c98a;
+    border-bottom: 2px solid #f2c98a;
+  }
+
+  .pet-overlay-wrap {
+    position: absolute;
+    z-index: 2;
+    display: none;
+    pointer-events: none;
+  }
+  .pet-overlay-wrap img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+  }
+  .pet-overlay-wrap.adjusting {
+    display: block;
+    pointer-events: auto;
+    cursor: move;
+    border: 2px dashed #f2c98a;
+    background: rgba(242, 201, 138, 0.1);
+    box-sizing: border-box;
+  }
+  .pet-overlay-wrap.adjusting img {
+    opacity: 0.92;
+  }
+
+  @keyframes heartPop {
+    0% { opacity: 0; transform: translateY(0) scale(0.6); }
+    20% { opacity: 1; transform: translateY(-6px) scale(1); }
+    100% { opacity: 0; transform: translateY(-48px) scale(1.1); }
+  }
+
+  .pet-heart {
+    position: absolute;
+    z-index: 9;
+    font-size: 22px;
+    color: #ff4fae;
+    pointer-events: none;
+    animation: heartPop 1.1s ease-out forwards;
+  }
+
+  /* 顔の位置基準。画像比率(%)で配置しているのでリサイズしても追従する */
+  .bubble-anchor {
+    position: absolute;
+    left: 33%;
+    top: 34%;
+    width: 1px;
+    height: 1px;
+  }
+
+  .bubble-float {
+    position: absolute;
+    left: 20px;
+    bottom: 10px;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    animation: floatY 3.2s ease-in-out infinite;
+  }
+
+  @keyframes floatY {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-9px); }
+  }
+
+  .name-tag {
+    z-index: 10;
+    background: #3a2c47;
+    color: #ffffff;
+    padding: 5px 16px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    border: 1px solid #241b2e;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.45);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    white-space: nowrap;
+    font-family: sans-serif;
+  }
+  .name-tag.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .bubble {
+    position: relative;
+    min-width: 180px;
+    max-width: 280px;
+    background: rgba(255, 250, 240, 0.94);
+    color: #4a3b2a;
+    padding: 14px 18px;
+    border-radius: 18px;
+    border: 2px solid #c9a97a;
+    font-size: clamp(13px, 1.6vw, 17px);
+    line-height: 1.6;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+    opacity: 0;
+    transform: scale(0.96);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    pointer-events: auto;
+    cursor: grab;
+  }
+
+  .bubble.show {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .bubble::after {
+    content: "";
+    position: absolute;
+    left: -14px;
+    bottom: 18px;
+    width: 0;
+    height: 0;
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-right: 14px solid #c9a97a;
+  }
+  .bubble::before {
+    content: "";
+    position: absolute;
+    left: -11px;
+    bottom: 19px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-bottom: 7px solid transparent;
+    border-right: 12px solid rgba(255, 250, 240, 0.94);
+    z-index: 1;
+  }
+
+  /* ダークモード：吹き出し黒、テキスト白 */
+  body.dark-bubble .bubble {
+    background: rgba(20, 18, 16, 0.94);
+    color: #ffffff;
+    border-color: #4a4038;
+  }
+  body.dark-bubble .bubble::after {
+    border-right-color: #4a4038;
+  }
+  body.dark-bubble .bubble::before {
+    border-right-color: rgba(20, 18, 16, 0.94);
+  }
+
+  .bubble.dragging {
+    cursor: grabbing;
+    transition: none;
+  }
+  .bubble-float.dragging-parent {
+    animation: none;
+  }
+
+  /* --- 下部パネル --- */
+  .panel {
+    width: 100%;
+    background: #1c1712;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    padding: 20px 24px 40px 24px;
+    box-sizing: border-box;
+    color: #e8ddd0;
+    font-family: sans-serif;
+  }
+
+  .panel-inner {
+    max-width: 900px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .section {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+
+  .section h2 {
+    font-size: 14px;
+    margin: 0 0 12px 0;
+    opacity: 0.85;
+    font-weight: 600;
+    color: #f2c98a;
+  }
+
+  .row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    min-width: 160px;
+    padding: 9px 12px;
+    border-radius: 6px;
+    border: 1px solid #6a5a48;
+    background: #241d17;
+    color: #f2e9dc;
+    font-size: 14px;
+  }
+
+  input[type="file"] {
+    color: #cbbfae;
+    font-size: 13px;
+  }
+
+  button {
+    padding: 9px 16px;
+    border-radius: 6px;
+    border: 1px solid #c9a97a;
+    background: #3a2f24;
+    color: #f2e9dc;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  button:hover {
+    background: #4a3c2d;
+  }
+
+  button.toggle.active {
+    background: #7a5a3a;
+    border-color: #f2c98a;
+  }
+
+  .line-list {
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .line-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px;
+    padding: 7px 10px;
+    font-size: 13px;
+  }
+
+  .line-item span {
+    flex: 1;
+    margin-right: 8px;
+  }
+
+  .line-item input[type="text"] {
+    flex: 1;
+    margin-right: 8px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+
+  .line-item button {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+
+  .hint {
+    font-size: 12px;
+    opacity: 0.6;
+    margin-top: 8px;
+    line-height: 1.5;
+  }
+</style>
+</head>
+<body>
+
+<div class="stage-outer">
+<div class="stage" id="stage">
+  <img src="character.png" alt="雨の日、ベッドでゲームをする男の子" id="characterImg">
+
+  <div class="pet-overlay-wrap" id="petOverlayWrap">
+    <img id="petOverlayImg" alt="">
+  </div>
+
+  <div class="bubble-anchor" id="anchor">
+    <div class="bubble-float" id="bubbleFloat">
+      <div class="name-tag" id="nameTag">アレックス</div>
+      <div class="bubble" id="bubble">セリフ</div>
+    </div>
+  </div>
+
+  <div class="resize-handle" id="resizeHandle" title="ドラッグして画像サイズを変更"></div>
+</div>
+</div>
+
+<div class="panel">
+  <div class="panel-inner">
+
+    <div class="section">
+      <h2>セリフを追加する</h2>
+      <div class="row">
+        <input type="text" id="newLine" placeholder="新しいセリフを入力してね…">
+        <button id="addBtn">追加</button>
+      </div>
+      <div class="line-list" id="lineList"></div>
+      <div class="hint">追加したセリフはこの端末に保存されて、次に開いたときも残るよ。</div>
+    </div>
+
+    <div class="section">
+      <h2>吹き出しの位置</h2>
+      <div class="hint">吹き出しはいつでもつかんでドラッグできるよ。動かすと、その位置が自動で保存されるんだ。</div>
+    </div>
+
+    <div class="section">
+      <h2>撫でている時の画像</h2>
+      <div class="row">
+        <input type="file" id="petImgInput" accept="image/*">
+        <button id="petImgResetBtn">解除する</button>
+      </div>
+      <div class="hint" id="petImgHint">撫でている間だけ表示される画像を設定できるよ。元の画像とサイズがぴったり同じなら自動でそのまま重なるし、サイズが違う場合は位置とサイズを自分で調整できるよ。</div>
+      <div class="row" id="petImgAdjustRow" style="display:none; margin-top:8px;">
+        <button id="petImgAdjustBtn" class="toggle">位置を調整する</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>撫でられる場所を編集する</h2>
+      <div class="row">
+        <button id="zoneEditBtn" class="toggle">編集モードにする</button>
+        <button id="zoneAddBtn">新しい場所を追加</button>
+      </div>
+      <div class="hint">編集モードにすると、画像の上に撫でられる範囲が枠で表示されるよ。枠をつかんでドラッグすると移動、右下の角をつまむとサイズを変えられるんだ。枠をクリック（軽くタップ）すると選択されて、下にその場所専用のセリフを追加できるよ。</div>
+
+      <div id="zoneLineEditor" style="display:none; margin-top:14px;">
+        <div class="row" style="margin-bottom:8px;">
+          <strong id="zoneEditorTitle" style="font-size:13px;"></strong>
+          <button id="zoneDeleteBtn" style="margin-left:auto; border-color:#c96a6a;">この場所を削除</button>
+        </div>
+        <div class="row">
+          <input type="text" id="zoneNewLine" placeholder="この場所専用のセリフを入力してね…">
+          <button id="zoneAddLineBtn">追加</button>
+        </div>
+        <div class="line-list" id="zoneLineList"></div>
+        <div class="hint">セリフが1つもない場所は、ハートだけ出てセリフは表示されないよ。</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>名前を変える</h2>
+      <div class="row">
+        <input type="text" id="nameInput" placeholder="呼びたい名前を入力してね…">
+        <button id="nameBtn">変更する</button>
+      </div>
+      <div class="hint">吹き出しの上に表示される名前だよ。今は「アレックス」になってる。</div>
+    </div>
+
+    <div class="section">
+      <h2>画像を変える</h2>
+      <div class="row">
+        <input type="file" id="imgInput" accept="image/*">
+        <button id="resetImgBtn">元の画像に戻す</button>
+      </div>
+      <div class="hint">好きな画像に差し替えられるよ。この端末に保存されるから、次回もそのまま表示されるんだ。</div>
+    </div>
+
+    <div class="section">
+      <h2>画像のサイズ</h2>
+      <div class="row">
+        <input type="range" id="sizeSlider" min="25" max="100" value="100" step="1">
+        <span id="sizeValue" style="font-size:13px; opacity:0.8; min-width:44px;">100%</span>
+        <button id="resetSizeBtn">元のサイズに戻す</button>
+      </div>
+      <div class="hint">画像の右下にある角のハンドルをつまんでドラッグしても拡縮できるよ。スライダーでも同じことができるんだ。</div>
+    </div>
+
+    <div class="section">
+      <h2>吹き出しの色</h2>
+      <div class="row">
+        <button id="darkModeBtn" class="toggle">ダークモードに切り替え</button>
+      </div>
+      <div class="hint">吹き出しを黒背景・白文字に切り替えられるよ。</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  const DEFAULT_LINES = [
+    "今日は何をしようかな。",
+    "雨の日はのんびりココアでも飲もうかな。",
+    "……この音、嫌いじゃないんだよね。",
+    "キミは、今日はどんな一日だった？",
+    "こういう日は、何もしなくてもいい気がするんだ。",
+    "ポテチ…もう半分食べちゃった。",
+    "たまにはゲームの続きも気になるけどさ…",
+    "雷、光った……ちょっとびっくりした。",
+  ];
+  const DEFAULT_NAME = "アレックス";
+  const ROTATION_MS = 30000;
+
+  const STORAGE_KEY_LINES = "kura_bubble_custom_lines";
+  const STORAGE_KEY_POS = "kura_bubble_position";
+  const STORAGE_KEY_NAME = "kura_bubble_name";
+  const STORAGE_KEY_IMG = "kura_bubble_custom_image";
+  const STORAGE_KEY_SIZE = "kura_bubble_stage_size";
+
+  const bubble = document.getElementById("bubble");
+  const bubbleFloat = document.getElementById("bubbleFloat");
+  const nameTag = document.getElementById("nameTag");
+  const anchor = document.getElementById("anchor");
+  const stage = document.getElementById("stage");
+  const stageOuter = document.querySelector(".stage-outer");
+  const characterImg = document.getElementById("characterImg");
+  const resizeHandle = document.getElementById("resizeHandle");
+  const petOverlayWrap = document.getElementById("petOverlayWrap");
+  const petOverlayImg = document.getElementById("petOverlayImg");
+
+  const petImgInput = document.getElementById("petImgInput");
+  const petImgResetBtn = document.getElementById("petImgResetBtn");
+  const petImgHint = document.getElementById("petImgHint");
+  const petImgAdjustRow = document.getElementById("petImgAdjustRow");
+  const petImgAdjustBtn = document.getElementById("petImgAdjustBtn");
+
+  const zoneEditBtn = document.getElementById("zoneEditBtn");
+  const zoneAddBtn = document.getElementById("zoneAddBtn");
+  const zoneLineEditor = document.getElementById("zoneLineEditor");
+  const zoneEditorTitle = document.getElementById("zoneEditorTitle");
+  const zoneDeleteBtn = document.getElementById("zoneDeleteBtn");
+  const zoneNewLine = document.getElementById("zoneNewLine");
+  const zoneAddLineBtn = document.getElementById("zoneAddLineBtn");
+  const zoneLineList = document.getElementById("zoneLineList");
+
+  const newLineInput = document.getElementById("newLine");
+  const addBtn = document.getElementById("addBtn");
+  const lineList = document.getElementById("lineList");
+  const nameInput = document.getElementById("nameInput");
+  const nameBtn = document.getElementById("nameBtn");
+  const imgInput = document.getElementById("imgInput");
+  const resetImgBtn = document.getElementById("resetImgBtn");
+  const sizeSlider = document.getElementById("sizeSlider");
+  const sizeValue = document.getElementById("sizeValue");
+  const resetSizeBtn = document.getElementById("resetSizeBtn");
+
+  // ---- セリフ ----
+  // 初期表示セリフと追加分をひとつのリストにまとめて管理する
+  function loadLines() {
+    let result;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_LINES);
+      result = raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      result = null;
+    }
+    if (!result) {
+      // 初回はデフォルトのセリフで初期化
+      result = DEFAULT_LINES.slice();
+    } else {
+      // 既存のセリフに、まだ含まれていないデフォルトのセリフを追加する
+      DEFAULT_LINES.forEach((line) => {
+        if (!result.includes(line)) result.push(line);
+      });
+    }
+    saveLines(result);
+    return result;
+  }
+  function saveLines(arr) {
+    localStorage.setItem(STORAGE_KEY_LINES, JSON.stringify(arr));
+  }
+  let lines = loadLines();
+
+  let usedOrder = [];
+  function pickNext() {
+    if (usedOrder.length === 0) {
+      usedOrder = [...Array(lines.length).keys()];
+      for (let i = usedOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [usedOrder[i], usedOrder[j]] = [usedOrder[j], usedOrder[i]];
+      }
+    }
+    return usedOrder.pop();
+  }
+
+  function showBubbleText(text) {
+    bubble.classList.remove("show");
+    nameTag.classList.remove("show");
+    setTimeout(() => {
+      bubble.textContent = text;
+      bubble.classList.add("show");
+      nameTag.classList.add("show");
+    }, 500);
+  }
+
+  function showNextLine() {
+    if (lines.length === 0) return;
+    const idx = pickNext() % lines.length;
+    showBubbleText(lines[idx]);
+  }
+
+  setInterval(showNextLine, ROTATION_MS);
+
+  function spawnHeart(clientX, clientY) {
+    const rect = stage.getBoundingClientRect();
+    const heart = document.createElement("div");
+    heart.className = "pet-heart";
+    heart.textContent = "❤︎";
+    heart.style.left = (clientX - rect.left - 8) + "px";
+    heart.style.top = (clientY - rect.top - 8) + "px";
+    stage.appendChild(heart);
+    setTimeout(() => heart.remove(), 1100);
+  }
+
+  // ---- 撫でられる場所（複数ゾーン）----
+  const STORAGE_KEY_ZONES = "kura_bubble_pet_zones";
+  const DEFAULT_ZONE_LINES = [
+    "くすぐったいよ…",
+    "どうかしたの？",
+    "……ふふ、なに？",
+    "そんなに撫でなくても、いなくならないよ。",
+    "キミの手、あったかいね。",
+  ];
+  const DEFAULT_ZONES = [
+    { id: "zone-default", leftPct: 17, topPct: 36, widthPct: 22, heightPct: 24, lines: DEFAULT_ZONE_LINES.slice() },
+  ];
+
+  function loadZones() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_ZONES);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {}
+    return DEFAULT_ZONES.map((z) => ({ ...z, lines: z.lines.slice() }));
+  }
+  function saveZones(arr) {
+    localStorage.setItem(STORAGE_KEY_ZONES, JSON.stringify(arr));
+  }
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  let zones = loadZones();
+  let zoneEditMode = false;
+  let selectedZoneId = null;
+  let zoneIdCounter = 0;
+  const zoneUsedOrderMap = {};
+
+  function makeZoneId() {
+    return "zone-" + Date.now() + "-" + (zoneIdCounter++);
+  }
+
+  function pickZoneLine(zone) {
+    if (!zone.lines || zone.lines.length === 0) return null;
+    let order = zoneUsedOrderMap[zone.id];
+    if (!order || order.length === 0) {
+      order = [...Array(zone.lines.length).keys()];
+      for (let i = order.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [order[i], order[j]] = [order[j], order[i]];
+      }
+      zoneUsedOrderMap[zone.id] = order;
+    }
+    const idx = order.pop();
+    return zone.lines[idx];
+  }
+
+  function renderZones() {
+    stage.querySelectorAll(".pet-zone").forEach((el) => el.remove());
+    zones.forEach((zone, i) => {
+      const el = document.createElement("div");
+      el.className = "pet-zone";
+      el.dataset.id = zone.id;
+      el.style.left = zone.leftPct + "%";
+      el.style.top = zone.topPct + "%";
+      el.style.width = zone.widthPct + "%";
+      el.style.height = zone.heightPct + "%";
+
+      if (zoneEditMode) {
+        el.classList.add("edit-mode");
+        if (zone.id === selectedZoneId) el.classList.add("selected");
+
+        const label = document.createElement("div");
+        label.className = "zone-label";
+        label.textContent = `場所${i + 1}（セリフ${zone.lines.length}個）`;
+        el.appendChild(label);
+
+        const handle = document.createElement("div");
+        handle.className = "zone-resize-handle";
+        el.appendChild(handle);
+      } else {
+        el.title = "撫でてみる";
+        el.addEventListener("mousedown", () => beginPetting());
+        el.addEventListener("click", (e) => {
+          const line = pickZoneLine(zone);
+          if (line) showBubbleText(line);
+          spawnHeart(e.clientX, e.clientY);
+        });
+        el.addEventListener(
+          "touchstart",
+          (e) => {
+            beginPetting();
+            const line = pickZoneLine(zone);
+            if (line) showBubbleText(line);
+            const touch = e.touches[0];
+            if (touch) spawnHeart(touch.clientX, touch.clientY);
+          },
+          { passive: true }
+        );
+      }
+      stage.appendChild(el);
+    });
+  }
+
+  // ---- ゾーンの移動・拡縮（編集モード中のみ有効）----
+  let activeZoneId = null;
+  let activeMode = null; // "move" | "resize"
+  let zoneStartClientX = 0, zoneStartClientY = 0;
+  let zoneStartLeftPct = 0, zoneStartTopPct = 0, zoneStartWidthPct = 0, zoneStartHeightPct = 0;
+  let zoneMovedDistance = 0;
+
+  function onZonePointerDown(e) {
+    if (!zoneEditMode) return;
+    const zoneEl = e.target.closest(".pet-zone");
+    if (!zoneEl || !stage.contains(zoneEl)) return;
+    const zone = zones.find((z) => z.id === zoneEl.dataset.id);
+    if (!zone) return;
+    const isHandle = !!e.target.closest(".zone-resize-handle");
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    activeZoneId = zone.id;
+    activeMode = isHandle ? "resize" : "move";
+    zoneStartClientX = clientX;
+    zoneStartClientY = clientY;
+    zoneStartLeftPct = zone.leftPct;
+    zoneStartTopPct = zone.topPct;
+    zoneStartWidthPct = zone.widthPct;
+    zoneStartHeightPct = zone.heightPct;
+    zoneMovedDistance = 0;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function onZonePointerMove(e) {
+    if (!activeZoneId) return;
+    const zone = zones.find((z) => z.id === activeZoneId);
+    if (!zone) return;
+    const rect = getStageRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dxPct = ((clientX - zoneStartClientX) / rect.width) * 100;
+    const dyPct = ((clientY - zoneStartClientY) / rect.height) * 100;
+    zoneMovedDistance = Math.max(zoneMovedDistance, Math.abs(clientX - zoneStartClientX) + Math.abs(clientY - zoneStartClientY));
+    const el = stage.querySelector(`.pet-zone[data-id="${CSS.escape(zone.id)}"]`);
+
+    if (activeMode === "move") {
+      zone.leftPct = clamp(zoneStartLeftPct + dxPct, 0, 100 - zone.widthPct);
+      zone.topPct = clamp(zoneStartTopPct + dyPct, 0, 100 - zone.heightPct);
+      if (el) {
+        el.style.left = zone.leftPct + "%";
+        el.style.top = zone.topPct + "%";
+      }
+    } else if (activeMode === "resize") {
+      zone.widthPct = clamp(zoneStartWidthPct + dxPct, 6, 100 - zone.leftPct);
+      zone.heightPct = clamp(zoneStartHeightPct + dyPct, 6, 100 - zone.topPct);
+      if (el) {
+        el.style.width = zone.widthPct + "%";
+        el.style.height = zone.heightPct + "%";
+      }
+    }
+    e.preventDefault();
+  }
+
+  function onZonePointerUp() {
+    if (!activeZoneId) return;
+    const id = activeZoneId;
+    const mode = activeMode;
+    const dist = zoneMovedDistance;
+    activeZoneId = null;
+    activeMode = null;
+    saveZones(zones);
+    if (mode === "move" && dist < 4) {
+      selectZone(id);
+    }
+  }
+
+  stage.addEventListener("mousedown", onZonePointerDown);
+  stage.addEventListener("touchstart", onZonePointerDown, { passive: false });
+  window.addEventListener("mousemove", onZonePointerMove);
+  window.addEventListener("touchmove", onZonePointerMove, { passive: false });
+  window.addEventListener("mouseup", onZonePointerUp);
+  window.addEventListener("touchend", onZonePointerUp);
+
+  // ---- ゾーンごとのセリフ編集パネル ----
+  function selectZone(id) {
+    selectedZoneId = id;
+    renderZones();
+    renderZoneLineEditor();
+  }
+
+  function renderZoneLineEditor() {
+    const zone = zones.find((z) => z.id === selectedZoneId);
+    if (!zoneEditMode || !zone) {
+      zoneLineEditor.style.display = "none";
+      return;
+    }
+    zoneLineEditor.style.display = "block";
+    const idx = zones.indexOf(zone);
+    zoneEditorTitle.textContent = `場所${idx + 1}のセリフ`;
+
+    zoneLineList.innerHTML = "";
+    zone.lines.forEach((line, i) => {
+      const item = document.createElement("div");
+      item.className = "line-item";
+
+      const span = document.createElement("span");
+      span.textContent = line;
+
+      const editInput = document.createElement("input");
+      editInput.type = "text";
+      editInput.value = line;
+      editInput.style.display = "none";
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "編集";
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "削除";
+
+      let isEditing = false;
+
+      editBtn.addEventListener("click", () => {
+        if (!isEditing) {
+          isEditing = true;
+          span.style.display = "none";
+          editInput.style.display = "inline-block";
+          editInput.focus();
+          editInput.select();
+          editBtn.textContent = "保存";
+        } else {
+          const newText = editInput.value.trim();
+          if (newText) {
+            zone.lines[i] = newText;
+            saveZones(zones);
+            span.textContent = newText;
+            delete zoneUsedOrderMap[zone.id];
+          }
+          isEditing = false;
+          span.style.display = "inline";
+          editInput.style.display = "none";
+          editBtn.textContent = "編集";
+        }
+      });
+
+      delBtn.addEventListener("click", () => {
+        zone.lines.splice(i, 1);
+        saveZones(zones);
+        delete zoneUsedOrderMap[zone.id];
+        renderZoneLineEditor();
+        renderZones();
+      });
+
+      item.appendChild(span);
+      item.appendChild(editInput);
+      item.appendChild(editBtn);
+      item.appendChild(delBtn);
+      zoneLineList.appendChild(item);
+    });
+  }
+
+  function applyZoneEditButtonState() {
+    zoneEditBtn.classList.toggle("active", zoneEditMode);
+    zoneEditBtn.textContent = zoneEditMode ? "編集モードを終える" : "編集モードにする";
+  }
+
+  zoneEditBtn.addEventListener("click", () => {
+    zoneEditMode = !zoneEditMode;
+    if (!zoneEditMode) selectedZoneId = null;
+    if (zoneEditMode && petImgAdjustMode) {
+      petImgAdjustMode = false;
+      applyPetImgAdjustButtonState();
+      petOverlayWrap.classList.remove("adjusting");
+      removePetOverlayHandle();
+      if (!isPetting) petOverlayWrap.style.display = "none";
+    }
+    applyZoneEditButtonState();
+    renderZones();
+    renderZoneLineEditor();
+  });
+
+  zoneAddBtn.addEventListener("click", () => {
+    if (!zoneEditMode) {
+      zoneEditMode = true;
+      applyZoneEditButtonState();
+    }
+    const newZone = {
+      id: makeZoneId(),
+      leftPct: 40,
+      topPct: 40,
+      widthPct: 20,
+      heightPct: 20,
+      lines: [],
+    };
+    zones.push(newZone);
+    saveZones(zones);
+    selectZone(newZone.id);
+  });
+
+  zoneAddLineBtn.addEventListener("click", () => {
+    const zone = zones.find((z) => z.id === selectedZoneId);
+    if (!zone) return;
+    const text = zoneNewLine.value.trim();
+    if (!text) return;
+    zone.lines.push(text);
+    saveZones(zones);
+    zoneNewLine.value = "";
+    delete zoneUsedOrderMap[zone.id];
+    renderZoneLineEditor();
+    renderZones();
+  });
+
+  zoneDeleteBtn.addEventListener("click", () => {
+    const zone = zones.find((z) => z.id === selectedZoneId);
+    if (!zone) return;
+    if (!confirm("この撫でられる場所を削除する？")) return;
+    zones = zones.filter((z) => z.id !== zone.id);
+    saveZones(zones);
+    selectedZoneId = null;
+    renderZones();
+    renderZoneLineEditor();
+  });
+
+  renderZones();
+
+  function renderLineList() {
+    lineList.innerHTML = "";
+    lines.forEach((line, i) => {
+      const item = document.createElement("div");
+      item.className = "line-item";
+
+      const span = document.createElement("span");
+      span.textContent = line;
+
+      const editInput = document.createElement("input");
+      editInput.type = "text";
+      editInput.value = line;
+      editInput.style.display = "none";
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "編集";
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "削除";
+
+      let isEditing = false;
+
+      editBtn.addEventListener("click", () => {
+        if (!isEditing) {
+          // 編集モードに入る
+          isEditing = true;
+          span.style.display = "none";
+          editInput.style.display = "inline-block";
+          editInput.focus();
+          editInput.select();
+          editBtn.textContent = "保存";
+        } else {
+          // 保存する
+          const newText = editInput.value.trim();
+          if (newText) {
+            lines[i] = newText;
+            saveLines(lines);
+            span.textContent = newText;
+            usedOrder = [];
+          }
+          isEditing = false;
+          span.style.display = "inline";
+          editInput.style.display = "none";
+          editBtn.textContent = "編集";
+        }
+      });
+
+      delBtn.addEventListener("click", () => {
+        lines.splice(i, 1);
+        saveLines(lines);
+        usedOrder = [];
+        renderLineList();
+      });
+
+      item.appendChild(span);
+      item.appendChild(editInput);
+      item.appendChild(editBtn);
+      item.appendChild(delBtn);
+      lineList.appendChild(item);
+    });
+  }
+
+  function addLine() {
+    const text = newLineInput.value.trim();
+    if (!text) return;
+    lines.push(text);
+    saveLines(lines);
+    newLineInput.value = "";
+    usedOrder = [];
+    renderLineList();
+  }
+  addBtn.addEventListener("click", addLine);
+  renderLineList();
+
+  // ---- 名前 ----
+  function loadName() {
+    return localStorage.getItem(STORAGE_KEY_NAME) || DEFAULT_NAME;
+  }
+  function saveName(name) {
+    localStorage.setItem(STORAGE_KEY_NAME, name);
+  }
+  nameTag.textContent = loadName();
+  nameInput.placeholder = `今は「${loadName()}」だよ`;
+
+  nameBtn.addEventListener("click", () => {
+    const val = nameInput.value.trim();
+    if (!val) return;
+    nameTag.textContent = val;
+    saveName(val);
+    nameInput.value = "";
+    nameInput.placeholder = `今は「${val}」だよ`;
+  });
+
+  // ---- 画像アップロード ----
+  function loadCustomImage() {
+    try {
+      return localStorage.getItem(STORAGE_KEY_IMG);
+    } catch (e) { return null; }
+  }
+  const savedImg = loadCustomImage();
+  let baseImageSrc = savedImg || "character.png";
+  if (savedImg) {
+    characterImg.src = savedImg;
+  }
+
+  imgInput.addEventListener("change", () => {
+    const file = imgInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      baseImageSrc = dataUrl;
+      if (!isPetting) characterImg.src = baseImageSrc;
+      try {
+        localStorage.setItem(STORAGE_KEY_IMG, dataUrl);
+      } catch (e) {
+        alert("画像サイズが大きすぎて保存できなかったみたい…表示だけはできてるよ。");
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  resetImgBtn.addEventListener("click", () => {
+    baseImageSrc = "character.png";
+    if (!isPetting) characterImg.src = baseImageSrc;
+    localStorage.removeItem(STORAGE_KEY_IMG);
+    imgInput.value = "";
+  });
+
+  // ---- 撫でている時の画像 ----
+  const STORAGE_KEY_PET_IMG = "kura_bubble_pet_image";
+  const STORAGE_KEY_PET_IMG_MODE = "kura_bubble_pet_image_mode";
+  const STORAGE_KEY_PET_OVERLAY_RECT = "kura_bubble_pet_overlay_rect";
+
+  let petImgSrc = null;
+  let petImgMode = null; // "replace" | "overlay"
+  let petOverlayRect = { leftPct: 35, topPct: 35, widthPct: 30, heightPct: 30 };
+  let petImgAdjustMode = false;
+  let isPetting = false;
+
+  function loadPetImgState() {
+    try {
+      petImgSrc = localStorage.getItem(STORAGE_KEY_PET_IMG);
+      petImgMode = localStorage.getItem(STORAGE_KEY_PET_IMG_MODE);
+      const raw = localStorage.getItem(STORAGE_KEY_PET_OVERLAY_RECT);
+      if (raw) petOverlayRect = JSON.parse(raw);
+    } catch (e) {}
+  }
+  function savePetOverlayRect() {
+    localStorage.setItem(STORAGE_KEY_PET_OVERLAY_RECT, JSON.stringify(petOverlayRect));
+  }
+  loadPetImgState();
+
+  function applyPetOverlayRect() {
+    petOverlayWrap.style.left = petOverlayRect.leftPct + "%";
+    petOverlayWrap.style.top = petOverlayRect.topPct + "%";
+    petOverlayWrap.style.width = petOverlayRect.widthPct + "%";
+    petOverlayWrap.style.height = petOverlayRect.heightPct + "%";
+  }
+
+  function updatePetImgHint() {
+    if (!petImgSrc) {
+      petImgHint.textContent = "撫でている間だけ表示される画像を設定できるよ。元の画像とサイズがぴったり同じなら自動でそのまま重なるし、サイズが違う場合は位置とサイズを自分で調整できるよ。";
+    } else if (petImgMode === "replace") {
+      petImgHint.textContent = "元の画像とサイズが同じだったから、撫でている間はまるごと差し替わるよ。";
+    } else {
+      petImgHint.textContent = "サイズが違ったから、下の「位置を調整する」で画像の位置とサイズを合わせてね。";
+    }
+    petImgAdjustRow.style.display = petImgMode === "overlay" ? "flex" : "none";
+  }
+  updatePetImgHint();
+  if (petImgMode === "overlay") applyPetOverlayRect();
+
+  petImgInput.addEventListener("change", () => {
+    const file = petImgInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result;
+      const testImg = new Image();
+      testImg.onload = () => {
+        const sameSize =
+          characterImg.naturalWidth > 0 &&
+          testImg.naturalWidth === characterImg.naturalWidth &&
+          testImg.naturalHeight === characterImg.naturalHeight;
+        petImgSrc = dataUrl;
+        petImgMode = sameSize ? "replace" : "overlay";
+        try {
+          localStorage.setItem(STORAGE_KEY_PET_IMG, petImgSrc);
+          localStorage.setItem(STORAGE_KEY_PET_IMG_MODE, petImgMode);
+        } catch (e) {
+          alert("画像サイズが大きすぎて保存できなかったみたい…表示だけはできてるよ。");
+        }
+        if (petImgMode === "overlay") {
+          applyPetOverlayRect();
+        } else {
+          petImgAdjustMode = false;
+          applyPetImgAdjustButtonState();
+          petOverlayWrap.classList.remove("adjusting");
+          petOverlayWrap.style.display = "none";
+          removePetOverlayHandle();
+        }
+        updatePetImgHint();
+      };
+      testImg.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  petImgResetBtn.addEventListener("click", () => {
+    petImgSrc = null;
+    petImgMode = null;
+    localStorage.removeItem(STORAGE_KEY_PET_IMG);
+    localStorage.removeItem(STORAGE_KEY_PET_IMG_MODE);
+    petImgInput.value = "";
+    petImgAdjustMode = false;
+    applyPetImgAdjustButtonState();
+    petOverlayWrap.classList.remove("adjusting");
+    petOverlayWrap.style.display = "none";
+    removePetOverlayHandle();
+    updatePetImgHint();
+  });
+
+  function renderPetOverlayHandle() {
+    if (!document.getElementById("petOverlayHandle")) {
+      const handle = document.createElement("div");
+      handle.className = "zone-resize-handle";
+      handle.id = "petOverlayHandle";
+      petOverlayWrap.appendChild(handle);
+    }
+  }
+  function removePetOverlayHandle() {
+    const handle = document.getElementById("petOverlayHandle");
+    if (handle) handle.remove();
+  }
+
+  function applyPetImgAdjustButtonState() {
+    petImgAdjustBtn.classList.toggle("active", petImgAdjustMode);
+    petImgAdjustBtn.textContent = petImgAdjustMode ? "位置調整を終える" : "位置を調整する";
+  }
+
+  petImgAdjustBtn.addEventListener("click", () => {
+    if (!petImgSrc || petImgMode !== "overlay") return;
+    petImgAdjustMode = !petImgAdjustMode;
+    if (petImgAdjustMode && zoneEditMode) {
+      zoneEditMode = false;
+      selectedZoneId = null;
+      applyZoneEditButtonState();
+      renderZones();
+      renderZoneLineEditor();
+    }
+    applyPetImgAdjustButtonState();
+    if (petImgAdjustMode) {
+      petOverlayImg.src = petImgSrc;
+      applyPetOverlayRect();
+      petOverlayWrap.style.display = "block";
+      petOverlayWrap.classList.add("adjusting");
+      renderPetOverlayHandle();
+    } else {
+      petOverlayWrap.classList.remove("adjusting");
+      removePetOverlayHandle();
+      if (!isPetting) petOverlayWrap.style.display = "none";
+    }
+  });
+
+  // ---- オーバーレイ画像の移動・拡縮（位置調整モード中のみ有効）----
+  let overlayActiveMode = null; // "move" | "resize"
+  let overlayStartClientX = 0, overlayStartClientY = 0;
+  let overlayStartLeftPct = 0, overlayStartTopPct = 0, overlayStartWidthPct = 0, overlayStartHeightPct = 0;
+
+  function onOverlayPointerDown(e) {
+    if (!petImgAdjustMode) return;
+    const wrap = e.target.closest("#petOverlayWrap");
+    if (!wrap) return;
+    const isHandle = !!e.target.closest("#petOverlayHandle");
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    overlayActiveMode = isHandle ? "resize" : "move";
+    overlayStartClientX = clientX;
+    overlayStartClientY = clientY;
+    overlayStartLeftPct = petOverlayRect.leftPct;
+    overlayStartTopPct = petOverlayRect.topPct;
+    overlayStartWidthPct = petOverlayRect.widthPct;
+    overlayStartHeightPct = petOverlayRect.heightPct;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  function onOverlayPointerMove(e) {
+    if (!overlayActiveMode) return;
+    const rect = getStageRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dxPct = ((clientX - overlayStartClientX) / rect.width) * 100;
+    const dyPct = ((clientY - overlayStartClientY) / rect.height) * 100;
+    if (overlayActiveMode === "move") {
+      petOverlayRect.leftPct = clamp(overlayStartLeftPct + dxPct, 0, 100 - petOverlayRect.widthPct);
+      petOverlayRect.topPct = clamp(overlayStartTopPct + dyPct, 0, 100 - petOverlayRect.heightPct);
+    } else {
+      petOverlayRect.widthPct = clamp(overlayStartWidthPct + dxPct, 6, 100 - petOverlayRect.leftPct);
+      petOverlayRect.heightPct = clamp(overlayStartHeightPct + dyPct, 6, 100 - petOverlayRect.topPct);
+    }
+    applyPetOverlayRect();
+    e.preventDefault();
+  }
+  function onOverlayPointerUp() {
+    if (!overlayActiveMode) return;
+    overlayActiveMode = null;
+    savePetOverlayRect();
+  }
+  stage.addEventListener("mousedown", onOverlayPointerDown);
+  stage.addEventListener("touchstart", onOverlayPointerDown, { passive: false });
+  window.addEventListener("mousemove", onOverlayPointerMove);
+  window.addEventListener("touchmove", onOverlayPointerMove, { passive: false });
+  window.addEventListener("mouseup", onOverlayPointerUp);
+  window.addEventListener("touchend", onOverlayPointerUp);
+
+  // ---- 撫でている間だけ画像を切り替える ----
+  function setPettingVisual(active) {
+    if (!petImgSrc) return;
+    if (petImgMode === "replace") {
+      characterImg.src = active ? petImgSrc : baseImageSrc;
+    } else if (petImgMode === "overlay") {
+      if (active) {
+        petOverlayImg.src = petImgSrc;
+        applyPetOverlayRect();
+        petOverlayWrap.style.display = "block";
+      } else if (!petImgAdjustMode) {
+        petOverlayWrap.style.display = "none";
+      }
+    }
+  }
+  function beginPetting() {
+    isPetting = true;
+    setPettingVisual(true);
+  }
+  function endPetting() {
+    if (!isPetting) return;
+    isPetting = false;
+    setPettingVisual(false);
+  }
+  window.addEventListener("mouseup", endPetting);
+  window.addEventListener("touchend", endPetting);
+  window.addEventListener("touchcancel", endPetting);
+
+
+  // ---- 吹き出しの位置（ドラッグ）----
+  function loadPosition() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_POS);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function savePosition(leftPct, topPct) {
+    localStorage.setItem(STORAGE_KEY_POS, JSON.stringify({ leftPct, topPct }));
+  }
+  function applyPosition(leftPct, topPct) {
+    anchor.style.left = leftPct + "%";
+    anchor.style.top = topPct + "%";
+  }
+  const savedPos = loadPosition();
+  if (savedPos) applyPosition(savedPos.leftPct, savedPos.topPct);
+
+  let dragging = false;
+  let dragOffsetX = 0;
+  let dragOffsetY = 0;
+
+  function getStageRect() { return stage.getBoundingClientRect(); }
+
+  function onPointerDown(e) {
+    dragging = true;
+    bubble.classList.add("dragging");
+    bubbleFloat.classList.add("dragging-parent");
+    const rect = getStageRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    dragOffsetX = clientX - rect.left - anchor.offsetLeft;
+    dragOffsetY = clientY - rect.top - anchor.offsetTop;
+    e.preventDefault();
+  }
+
+  function onPointerMove(e) {
+    if (!dragging) return;
+    const rect = getStageRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    let x = clientX - rect.left - dragOffsetX;
+    let y = clientY - rect.top - dragOffsetY;
+    x = Math.max(0, Math.min(rect.width, x));
+    y = Math.max(0, Math.min(rect.height, y));
+    applyPosition((x / rect.width) * 100, (y / rect.height) * 100);
+  }
+
+  function onPointerUp() {
+    if (!dragging) return;
+    dragging = false;
+    bubble.classList.remove("dragging");
+    bubbleFloat.classList.remove("dragging-parent");
+    savePosition(parseFloat(anchor.style.left), parseFloat(anchor.style.top));
+  }
+
+  bubble.addEventListener("mousedown", onPointerDown);
+  bubble.addEventListener("touchstart", onPointerDown, { passive: false });
+  window.addEventListener("mousemove", onPointerMove);
+  window.addEventListener("touchmove", onPointerMove, { passive: false });
+  window.addEventListener("mouseup", onPointerUp);
+  window.addEventListener("touchend", onPointerUp);
+
+  // ---- 画像のサイズ変更 ----
+  const MIN_SIZE_PCT = 25;
+  const MAX_SIZE_PCT = 100;
+
+  function loadSizePct() {
+    const raw = localStorage.getItem(STORAGE_KEY_SIZE);
+    const val = raw ? parseFloat(raw) : 100;
+    return isNaN(val) ? 100 : val;
+  }
+  function saveSizePct(pct) {
+    localStorage.setItem(STORAGE_KEY_SIZE, String(pct));
+  }
+  function applySizePct(pct) {
+    pct = Math.max(MIN_SIZE_PCT, Math.min(MAX_SIZE_PCT, pct));
+    stage.style.width = pct + "%";
+    sizeSlider.value = pct;
+    sizeValue.textContent = Math.round(pct) + "%";
+    return pct;
+  }
+
+  let currentSizePct = applySizePct(loadSizePct());
+
+  sizeSlider.addEventListener("input", () => {
+    currentSizePct = applySizePct(parseFloat(sizeSlider.value));
+    saveSizePct(currentSizePct);
+  });
+
+  resetSizeBtn.addEventListener("click", () => {
+    currentSizePct = applySizePct(100);
+    saveSizePct(currentSizePct);
+  });
+
+  // 角のハンドルをドラッグして拡縮
+  let resizing = false;
+  let resizeStartX = 0;
+  let resizeStartWidthPx = 0;
+
+  function onResizeDown(e) {
+    resizing = true;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    resizeStartX = clientX;
+    resizeStartWidthPx = stage.getBoundingClientRect().width;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function onResizeMove(e) {
+    if (!resizing) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const deltaX = clientX - resizeStartX;
+    const outerWidth = stageOuter.getBoundingClientRect().width;
+    const newWidthPx = resizeStartWidthPx + deltaX * 2; // 中心基準っぽく感じるよう倍で反映
+    const newPct = (newWidthPx / outerWidth) * 100;
+    currentSizePct = applySizePct(newPct);
+  }
+
+  function onResizeUp() {
+    if (!resizing) return;
+    resizing = false;
+    saveSizePct(currentSizePct);
+  }
+
+  resizeHandle.addEventListener("mousedown", onResizeDown);
+  resizeHandle.addEventListener("touchstart", onResizeDown, { passive: false });
+  window.addEventListener("mousemove", onResizeMove);
+  window.addEventListener("touchmove", onResizeMove, { passive: false });
+  window.addEventListener("mouseup", onResizeUp);
+  window.addEventListener("touchend", onResizeUp);
+
+  // ---- ダークモード（吹き出し黒、テキスト白）----
+  const STORAGE_KEY_DARK = "kura_bubble_dark_mode";
+  const darkModeBtn = document.getElementById("darkModeBtn");
+
+  function loadDarkMode() {
+    return localStorage.getItem(STORAGE_KEY_DARK) === "true";
+  }
+  function applyDarkMode(isDark) {
+    document.body.classList.toggle("dark-bubble", isDark);
+    darkModeBtn.classList.toggle("active", isDark);
+    darkModeBtn.textContent = isDark ? "ライトモードに切り替え" : "ダークモードに切り替え";
+  }
+
+  let isDarkMode = loadDarkMode();
+  applyDarkMode(isDarkMode);
+
+  darkModeBtn.addEventListener("click", () => {
+    isDarkMode = !isDarkMode;
+    localStorage.setItem(STORAGE_KEY_DARK, String(isDarkMode));
+    applyDarkMode(isDarkMode);
+  });
+
+  // ---- 初回表示 ----
+  window.addEventListener("load", () => {
+    setTimeout(showNextLine, 800);
+  });
+</script>
+
+</body>
+</html>
