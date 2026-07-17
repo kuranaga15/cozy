@@ -35,29 +35,6 @@
     -webkit-user-drag: none;
   }
 
-  .resize-handle {
-    position: absolute;
-    right: 6px;
-    bottom: 6px;
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    background: rgba(58, 47, 36, 0.85);
-    border: 2px solid #f2c98a;
-    cursor: nwse-resize;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .resize-handle::before {
-    content: "";
-    width: 10px;
-    height: 10px;
-    border-right: 3px solid #f2c98a;
-    border-bottom: 3px solid #f2c98a;
-  }
-
   .pet-zone {
     position: absolute;
     z-index: 3;
@@ -136,6 +113,48 @@
   }
   .pet-overlay-wrap.adjusting img {
     opacity: 0.92;
+  }
+
+  .diary-log {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44%;
+    height: 100%;
+    z-index: 6;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    align-items: flex-end;
+    gap: 9px;
+    padding: 18px 16px;
+    background: linear-gradient(to left, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.5) 30%, rgba(0,0,0,0) 100%);
+    overflow: hidden;
+  }
+
+  .diary-entry {
+    color: #fdfaf5;
+    font-size: 13px;
+    line-height: 1.7;
+    text-align: right;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+    max-width: 100%;
+    animation: diaryFadeIn 0.7s ease forwards;
+  }
+
+  .diary-entry .diary-time {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    opacity: 0.65;
+    font-family: sans-serif;
+    margin-bottom: 2px;
+  }
+
+  @keyframes diaryFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
   @keyframes heartPop {
@@ -382,6 +401,101 @@
     font-size: 12px;
   }
 
+  select {
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #6a5a48;
+    background: #241d17;
+    color: #f2e9dc;
+    font-size: 13px;
+  }
+
+  .diary-cat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .diary-cat-card {
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+
+  .diary-cat-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .diary-cat-head .cat-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #f2c98a;
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .diary-cat-sub-label {
+    font-size: 12px;
+    opacity: 0.7;
+    margin: 12px 0 4px 0;
+  }
+
+  .diary-cat-card.collapsed {
+    padding-bottom: 12px;
+  }
+
+  .cat-toggle-btn {
+    background: none;
+    border: none;
+    color: #f2c98a;
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+    flex: 0 0 auto;
+  }
+
+  h2.section-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+  }
+  h2.section-toggle .chevron {
+    font-size: 12px;
+    opacity: 0.75;
+    transition: transform 0.15s ease;
+  }
+  h2.section-toggle.collapsed .chevron {
+    transform: rotate(-90deg);
+  }
+
+  .section-body {
+    margin-top: 4px;
+  }
+  .section-body.collapsed {
+    display: none;
+  }
+
+  .sub-block {
+    margin-top: 20px;
+  }
+  .sub-block:first-child {
+    margin-top: 0;
+  }
+  .sub-block h3 {
+    font-size: 13px;
+    color: #f2c98a;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+  }
+
   .hint {
     font-size: 12px;
     opacity: 0.6;
@@ -400,14 +514,14 @@
     <img id="petOverlayImg" alt="">
   </div>
 
+  <div class="diary-log" id="diaryLog"></div>
+
   <div class="bubble-anchor" id="anchor">
     <div class="bubble-float" id="bubbleFloat">
       <div class="name-tag" id="nameTag">アレックス</div>
       <div class="bubble" id="bubble">セリフ</div>
     </div>
   </div>
-
-  <div class="resize-handle" id="resizeHandle" title="ドラッグして画像サイズを変更"></div>
 </div>
 </div>
 
@@ -415,18 +529,32 @@
   <div class="panel-inner">
 
     <div class="section">
-      <h2>セリフを追加する</h2>
-      <div class="row">
-        <input type="text" id="newLine" placeholder="新しいセリフを入力してね…">
-        <button id="addBtn">追加</button>
-      </div>
-      <div class="line-list" id="lineList"></div>
-      <div class="hint">追加したセリフはこの端末に保存されて、次に開いたときも残るよ。</div>
-    </div>
+      <h2 class="section-toggle collapsed" id="lineGroupToggle">セリフ <span class="chevron">▾</span></h2>
+      <div class="section-body collapsed" id="lineGroupBody">
 
-    <div class="section">
-      <h2>吹き出しの位置</h2>
-      <div class="hint">吹き出しはいつでもつかんでドラッグできるよ。動かすと、その位置が自動で保存されるんだ。</div>
+        <div class="sub-block">
+          <h3>単体セリフ</h3>
+          <div class="hint">組み合わせをしない、そのまま表示される一言だよ。時間帯を選ぶと、その時間だけ喋るようになる。</div>
+          <div class="row" style="margin-top:10px;">
+            <input type="text" id="newLine" placeholder="新しいセリフを入力してね…">
+            <select id="newLineBand"></select>
+            <button id="addBtn">追加</button>
+          </div>
+          <div class="line-list" id="lineList"></div>
+          <div class="hint">追加したセリフはこの端末に保存されて、次に開いたときも残るよ。</div>
+        </div>
+
+        <div class="sub-block">
+          <h3>セリフのカテゴリ（組み合わせ）</h3>
+          <div class="hint">日記のログと同じしくみだよ。カテゴリ名をクリックすると中の「ワード」と「内容」が開くよ。ランダムに組み合わさってセリフとして喋るようになる。ワードが空のカテゴリは「内容」がそのまま使われるよ。</div>
+          <div class="row" style="margin-top:10px;">
+            <input type="text" id="lineCatNewName" placeholder="新しいカテゴリ名（例：好きな食べ物）">
+            <button id="lineCatAddBtn">カテゴリを追加</button>
+          </div>
+          <div class="diary-cat-list" id="lineCatList"></div>
+        </div>
+
+      </div>
     </div>
 
     <div class="section">
@@ -464,6 +592,18 @@
     </div>
 
     <div class="section">
+      <h2 class="section-toggle collapsed" id="diaryGroupToggle">ログ <span class="chevron">▾</span></h2>
+      <div class="section-body collapsed" id="diaryGroupBody">
+        <div class="hint">「カテゴリ」を作って、その中に「ワード」（例：卵焼き、ピクルス）と「内容」（例：を作った。を食べた。）を登録すると、ランダムに組み合わさってログに流れるよ。カテゴリ名をクリックすると中身が開くよ。ワードが空っぽのカテゴリは、内容だけがそのまま使われる（「歯磨きした。」のような固定の一言に便利）。時間帯を指定すると、その時間だけ使われるようになるよ。</div>
+        <div class="row" style="margin-top:10px;">
+          <input type="text" id="diaryCatNewName" placeholder="新しいカテゴリ名（例：料理）">
+          <button id="diaryCatAddBtn">カテゴリを追加</button>
+        </div>
+        <div class="diary-cat-list" id="diaryCatList"></div>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>名前を変える</h2>
       <div class="row">
         <input type="text" id="nameInput" placeholder="呼びたい名前を入力してね…">
@@ -488,7 +628,7 @@
         <span id="sizeValue" style="font-size:13px; opacity:0.8; min-width:44px;">100%</span>
         <button id="resetSizeBtn">元のサイズに戻す</button>
       </div>
-      <div class="hint">画像の右下にある角のハンドルをつまんでドラッグしても拡縮できるよ。スライダーでも同じことができるんだ。</div>
+      <div class="hint">スライダーで画像の大きさを変えられるよ。</div>
     </div>
 
     <div class="section">
@@ -504,17 +644,37 @@
 
 <script>
   const DEFAULT_LINES = [
-    "今日は何をしようかな。",
-    "雨の日はのんびりココアでも飲もうかな。",
-    "……この音、嫌いじゃないんだよね。",
-    "キミは、今日はどんな一日だった？",
-    "こういう日は、何もしなくてもいい気がするんだ。",
-    "ポテチ…もう半分食べちゃった。",
-    "たまにはゲームの続きも気になるけどさ…",
-    "雷、光った……ちょっとびっくりした。",
+    { text: "今日は何をしようかな。", timeBand: "always" },
+    { text: "雨の日はのんびりココアでも飲もうかな。", timeBand: "always" },
+    { text: "……この音、嫌いじゃないんだよね。", timeBand: "always" },
+    { text: "キミは、今日はどんな一日だった？", timeBand: "always" },
+    { text: "こういう日は、何もしなくてもいい気がするんだ。", timeBand: "always" },
+    { text: "ポテチ…もう半分食べちゃった。", timeBand: "always" },
+    { text: "たまにはゲームの続きも気になるけどさ…", timeBand: "always" },
+    { text: "雷、光った……ちょっとびっくりした。", timeBand: "always" },
   ];
   const DEFAULT_NAME = "アレックス";
   const ROTATION_MS = 30000;
+
+  // 時間帯の選択肢（日記ログ・セリフのカテゴリ共通）
+  const TIME_BAND_OPTIONS = [
+    { value: "always", label: "いつでも" },
+    { value: "morning", label: "朝（7:00〜11:00）" },
+    { value: "day", label: "昼（11:00〜18:00）" },
+    { value: "evening", label: "夜（18:00〜22:00）" },
+    { value: "brush", label: "就寝前（22:00〜23:00）" },
+    { value: "sleep", label: "深夜（23:00〜7:00）" },
+  ];
+
+  // 現在時刻が属する時間帯を判定する（日記ログ・セリフのカテゴリ共通）
+  function getTimeBand(date) {
+    const mins = date.getHours() * 60 + date.getMinutes();
+    if (mins >= 23 * 60 || mins < 7 * 60) return "sleep";
+    if (mins >= 22 * 60) return "brush";
+    if (mins >= 18 * 60) return "evening";
+    if (mins >= 11 * 60) return "day";
+    return "morning";
+  }
 
   const STORAGE_KEY_LINES = "kura_bubble_custom_lines";
   const STORAGE_KEY_POS = "kura_bubble_position";
@@ -527,9 +687,7 @@
   const nameTag = document.getElementById("nameTag");
   const anchor = document.getElementById("anchor");
   const stage = document.getElementById("stage");
-  const stageOuter = document.querySelector(".stage-outer");
   const characterImg = document.getElementById("characterImg");
-  const resizeHandle = document.getElementById("resizeHandle");
   const petOverlayWrap = document.getElementById("petOverlayWrap");
   const petOverlayImg = document.getElementById("petOverlayImg");
 
@@ -561,21 +719,31 @@
 
   // ---- セリフ ----
   // 初期表示セリフと追加分をひとつのリストにまとめて管理する
+  function normalizeLine(item) {
+    if (typeof item === "string") return { text: item, timeBand: "always" };
+    if (item && typeof item === "object" && typeof item.text === "string") {
+      return { text: item.text, timeBand: item.timeBand || "always" };
+    }
+    return null;
+  }
+
   function loadLines() {
     let result;
     try {
       const raw = localStorage.getItem(STORAGE_KEY_LINES);
-      result = raw ? JSON.parse(raw) : null;
+      const parsed = raw ? JSON.parse(raw) : null;
+      result = Array.isArray(parsed) ? parsed.map(normalizeLine).filter(Boolean) : null;
     } catch (e) {
       result = null;
     }
     if (!result) {
       // 初回はデフォルトのセリフで初期化
-      result = DEFAULT_LINES.slice();
+      result = DEFAULT_LINES.map((l) => ({ ...l }));
     } else {
       // 既存のセリフに、まだ含まれていないデフォルトのセリフを追加する
-      DEFAULT_LINES.forEach((line) => {
-        if (!result.includes(line)) result.push(line);
+      const existingTexts = result.map((l) => l.text);
+      DEFAULT_LINES.forEach((l) => {
+        if (!existingTexts.includes(l.text)) result.push({ ...l });
       });
     }
     saveLines(result);
@@ -586,16 +754,25 @@
   }
   let lines = loadLines();
 
-  let usedOrder = [];
-  function pickNext() {
-    if (usedOrder.length === 0) {
-      usedOrder = [...Array(lines.length).keys()];
-      for (let i = usedOrder.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [usedOrder[i], usedOrder[j]] = [usedOrder[j], usedOrder[i]];
-      }
-    }
-    return usedOrder.pop();
+  let bubbleUsedOrder = [];
+  let bubbleUsedSignature = "";
+
+  function getBubbleSources() {
+    const band = getTimeBand(new Date());
+    const sources = lines
+      .filter((line) => line.timeBand === "always" || line.timeBand === band)
+      .map((line) => () => line.text);
+    lineCategorySystem.getCategories().forEach((cat) => {
+      if (cat.contents.length === 0) return;
+      if (!(cat.timeBand === "always" || cat.timeBand === band)) return;
+      sources.push(() => {
+        const content = cat.contents[Math.floor(Math.random() * cat.contents.length)];
+        if (cat.words.length === 0) return content;
+        const word = cat.words[Math.floor(Math.random() * cat.words.length)];
+        return word + content;
+      });
+    });
+    return sources;
   }
 
   function showBubbleText(text) {
@@ -609,12 +786,24 @@
   }
 
   function showNextLine() {
-    if (lines.length === 0) return;
-    const idx = pickNext() % lines.length;
-    showBubbleText(lines[idx]);
+    const sources = getBubbleSources();
+    if (sources.length === 0) return;
+    const signature = sources.length + "@" + getTimeBand(new Date());
+    if (bubbleUsedOrder.length === 0 || signature !== bubbleUsedSignature) {
+      bubbleUsedOrder = [...Array(sources.length).keys()];
+      for (let i = bubbleUsedOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [bubbleUsedOrder[i], bubbleUsedOrder[j]] = [bubbleUsedOrder[j], bubbleUsedOrder[i]];
+      }
+      bubbleUsedSignature = signature;
+    }
+    const idx = bubbleUsedOrder.pop();
+    const source = sources[idx];
+    if (source) showBubbleText(source());
   }
 
   setInterval(showNextLine, ROTATION_MS);
+
 
   function spawnHeart(clientX, clientY) {
     const rect = stage.getBoundingClientRect();
@@ -947,6 +1136,19 @@
 
   renderZones();
 
+  function buildTimeBandSelect(current, onChange) {
+    const select = document.createElement("select");
+    TIME_BAND_OPTIONS.forEach((opt) => {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.textContent = opt.label;
+      if (opt.value === current) o.selected = true;
+      select.appendChild(o);
+    });
+    select.addEventListener("change", () => onChange(select.value));
+    return select;
+  }
+
   function renderLineList() {
     lineList.innerHTML = "";
     lines.forEach((line, i) => {
@@ -954,12 +1156,18 @@
       item.className = "line-item";
 
       const span = document.createElement("span");
-      span.textContent = line;
+      span.textContent = line.text;
 
       const editInput = document.createElement("input");
       editInput.type = "text";
-      editInput.value = line;
+      editInput.value = line.text;
       editInput.style.display = "none";
+
+      const bandSelect = buildTimeBandSelect(line.timeBand, (val) => {
+        line.timeBand = val;
+        saveLines(lines);
+        bubbleUsedOrder = [];
+      });
 
       const editBtn = document.createElement("button");
       editBtn.textContent = "編集";
@@ -982,10 +1190,10 @@
           // 保存する
           const newText = editInput.value.trim();
           if (newText) {
-            lines[i] = newText;
+            line.text = newText;
             saveLines(lines);
             span.textContent = newText;
-            usedOrder = [];
+            bubbleUsedOrder = [];
           }
           isEditing = false;
           span.style.display = "inline";
@@ -997,12 +1205,13 @@
       delBtn.addEventListener("click", () => {
         lines.splice(i, 1);
         saveLines(lines);
-        usedOrder = [];
+        bubbleUsedOrder = [];
         renderLineList();
       });
 
       item.appendChild(span);
       item.appendChild(editInput);
+      item.appendChild(bandSelect);
       item.appendChild(editBtn);
       item.appendChild(delBtn);
       lineList.appendChild(item);
@@ -1012,14 +1221,24 @@
   function addLine() {
     const text = newLineInput.value.trim();
     if (!text) return;
-    lines.push(text);
+    lines.push({ text, timeBand: newLineBand.value || "always" });
     saveLines(lines);
     newLineInput.value = "";
-    usedOrder = [];
+    bubbleUsedOrder = [];
     renderLineList();
   }
   addBtn.addEventListener("click", addLine);
+
+  const newLineBand = document.getElementById("newLineBand");
+  TIME_BAND_OPTIONS.forEach((opt) => {
+    const o = document.createElement("option");
+    o.value = opt.value;
+    o.textContent = opt.label;
+    newLineBand.appendChild(o);
+  });
+
   renderLineList();
+
 
   // ---- 名前 ----
   function loadName() {
@@ -1040,48 +1259,120 @@
     nameInput.placeholder = `今は「${val}」だよ`;
   });
 
-  // ---- 画像アップロード ----
-  function loadCustomImage() {
-    try {
-      return localStorage.getItem(STORAGE_KEY_IMG);
-    } catch (e) { return null; }
-  }
-  const savedImg = loadCustomImage();
-  let baseImageSrc = savedImg || "character.png";
-  if (savedImg) {
-    characterImg.src = savedImg;
+  // ---- 画像用IndexedDB（大きいGIFなどでもlocalStorageの容量制限に引っかからないように）----
+  const IDB_NAME = "kura_bubble_images";
+  const IDB_STORE = "images";
+  let idbOpenPromise = null;
+
+  function openImageDB() {
+    if (!("indexedDB" in window)) return Promise.reject(new Error("no indexedDB"));
+    if (idbOpenPromise) return idbOpenPromise;
+    idbOpenPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains(IDB_STORE)) {
+          req.result.createObjectStore(IDB_STORE);
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    return idbOpenPromise;
   }
 
-  imgInput.addEventListener("change", () => {
+  async function idbSetImage(key, blob) {
+    const db = await openImageDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).put(blob, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function idbGetImage(key) {
+    const db = await openImageDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readonly");
+      const req = tx.objectStore(IDB_STORE).get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function idbDeleteImage(key) {
+    const db = await openImageDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IDB_STORE, "readwrite");
+      tx.objectStore(IDB_STORE).delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  // 以前のlocalStorage(dataURL)方式で保存されていた画像をIndexedDBへ引っ越す
+  async function migrateLegacyDataUrl(storageKey, idbKey) {
+    try {
+      const legacy = localStorage.getItem(storageKey);
+      if (!legacy) return null;
+      const res = await fetch(legacy);
+      const blob = await res.blob();
+      await idbSetImage(idbKey, blob);
+      localStorage.removeItem(storageKey);
+      return blob;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // ---- 画像アップロード ----
+  let baseImageSrc = "character.png";
+  let baseImageObjectUrl = null;
+
+  function setBaseImage(src, isObjectUrl) {
+    if (baseImageObjectUrl) {
+      URL.revokeObjectURL(baseImageObjectUrl);
+      baseImageObjectUrl = null;
+    }
+    baseImageSrc = src;
+    if (isObjectUrl) baseImageObjectUrl = src;
+    if (!isPetting) characterImg.src = baseImageSrc;
+  }
+
+  (async () => {
+    try {
+      let blob = await idbGetImage("customImage");
+      if (!blob) blob = await migrateLegacyDataUrl(STORAGE_KEY_IMG, "customImage");
+      if (blob) setBaseImage(URL.createObjectURL(blob), true);
+    } catch (e) {}
+  })();
+
+  imgInput.addEventListener("change", async () => {
     const file = imgInput.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      baseImageSrc = dataUrl;
-      if (!isPetting) characterImg.src = baseImageSrc;
-      try {
-        localStorage.setItem(STORAGE_KEY_IMG, dataUrl);
-      } catch (e) {
-        alert("画像サイズが大きすぎて保存できなかったみたい…表示だけはできてるよ。");
-      }
-    };
-    reader.readAsDataURL(file);
+    setBaseImage(URL.createObjectURL(file), true);
+    try {
+      await idbSetImage("customImage", file);
+    } catch (e) {
+      alert("画像の保存に失敗しちゃった…表示だけはできてるよ。");
+    }
   });
 
-  resetImgBtn.addEventListener("click", () => {
-    baseImageSrc = "character.png";
-    if (!isPetting) characterImg.src = baseImageSrc;
-    localStorage.removeItem(STORAGE_KEY_IMG);
+  resetImgBtn.addEventListener("click", async () => {
+    setBaseImage("character.png", false);
     imgInput.value = "";
+    try {
+      await idbDeleteImage("customImage");
+    } catch (e) {}
   });
 
   // ---- 撫でている時の画像 ----
-  const STORAGE_KEY_PET_IMG = "kura_bubble_pet_image";
+  const STORAGE_KEY_PET_IMG_LEGACY = "kura_bubble_pet_image";
   const STORAGE_KEY_PET_IMG_MODE = "kura_bubble_pet_image_mode";
   const STORAGE_KEY_PET_OVERLAY_RECT = "kura_bubble_pet_overlay_rect";
 
-  let petImgSrc = null;
+  let petImgSrc = null; // 表示に使うURL（object URL）
+  let petImgObjectUrl = null;
   let petImgMode = null; // "replace" | "overlay"
   let petOverlayRect = { leftPct: 35, topPct: 35, widthPct: 30, heightPct: 30 };
   let petImgAdjustMode = false;
@@ -1089,7 +1380,6 @@
 
   function loadPetImgState() {
     try {
-      petImgSrc = localStorage.getItem(STORAGE_KEY_PET_IMG);
       petImgMode = localStorage.getItem(STORAGE_KEY_PET_IMG_MODE);
       const raw = localStorage.getItem(STORAGE_KEY_PET_OVERLAY_RECT);
       if (raw) petOverlayRect = JSON.parse(raw);
@@ -1099,6 +1389,14 @@
     localStorage.setItem(STORAGE_KEY_PET_OVERLAY_RECT, JSON.stringify(petOverlayRect));
   }
   loadPetImgState();
+
+  function setPetImageSrc(url) {
+    if (petImgObjectUrl) {
+      URL.revokeObjectURL(petImgObjectUrl);
+    }
+    petImgSrc = url;
+    petImgObjectUrl = url;
+  }
 
   function applyPetOverlayRect() {
     petOverlayWrap.style.left = petOverlayRect.leftPct + "%";
@@ -1118,48 +1416,60 @@
     petImgAdjustRow.style.display = petImgMode === "overlay" ? "flex" : "none";
   }
   updatePetImgHint();
-  if (petImgMode === "overlay") applyPetOverlayRect();
+
+  (async () => {
+    try {
+      let blob = await idbGetImage("petImage");
+      if (!blob) blob = await migrateLegacyDataUrl(STORAGE_KEY_PET_IMG_LEGACY, "petImage");
+      if (blob && petImgMode) {
+        setPetImageSrc(URL.createObjectURL(blob));
+        if (petImgMode === "overlay") applyPetOverlayRect();
+      } else if (!blob) {
+        petImgMode = null;
+      }
+      updatePetImgHint();
+    } catch (e) {}
+  })();
 
   petImgInput.addEventListener("change", () => {
     const file = petImgInput.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result;
-      const testImg = new Image();
-      testImg.onload = () => {
-        const sameSize =
-          characterImg.naturalWidth > 0 &&
-          testImg.naturalWidth === characterImg.naturalWidth &&
-          testImg.naturalHeight === characterImg.naturalHeight;
-        petImgSrc = dataUrl;
-        petImgMode = sameSize ? "replace" : "overlay";
-        try {
-          localStorage.setItem(STORAGE_KEY_PET_IMG, petImgSrc);
-          localStorage.setItem(STORAGE_KEY_PET_IMG_MODE, petImgMode);
-        } catch (e) {
-          alert("画像サイズが大きすぎて保存できなかったみたい…表示だけはできてるよ。");
-        }
-        if (petImgMode === "overlay") {
-          applyPetOverlayRect();
-        } else {
-          petImgAdjustMode = false;
-          applyPetImgAdjustButtonState();
-          petOverlayWrap.classList.remove("adjusting");
-          petOverlayWrap.style.display = "none";
-          removePetOverlayHandle();
-        }
-        updatePetImgHint();
-      };
-      testImg.src = dataUrl;
+    const objUrl = URL.createObjectURL(file);
+    const testImg = new Image();
+    testImg.onload = async () => {
+      const sameSize =
+        characterImg.naturalWidth > 0 &&
+        testImg.naturalWidth === characterImg.naturalWidth &&
+        testImg.naturalHeight === characterImg.naturalHeight;
+      petImgMode = sameSize ? "replace" : "overlay";
+      setPetImageSrc(objUrl);
+      try {
+        await idbSetImage("petImage", file);
+        localStorage.setItem(STORAGE_KEY_PET_IMG_MODE, petImgMode);
+      } catch (e) {
+        alert("画像の保存に失敗しちゃった…表示だけはできてるよ。");
+      }
+      if (petImgMode === "overlay") {
+        applyPetOverlayRect();
+      } else {
+        petImgAdjustMode = false;
+        applyPetImgAdjustButtonState();
+        petOverlayWrap.classList.remove("adjusting");
+        petOverlayWrap.style.display = "none";
+        removePetOverlayHandle();
+      }
+      updatePetImgHint();
     };
-    reader.readAsDataURL(file);
+    testImg.src = objUrl;
   });
 
-  petImgResetBtn.addEventListener("click", () => {
+  petImgResetBtn.addEventListener("click", async () => {
+    if (petImgObjectUrl) {
+      URL.revokeObjectURL(petImgObjectUrl);
+      petImgObjectUrl = null;
+    }
     petImgSrc = null;
     petImgMode = null;
-    localStorage.removeItem(STORAGE_KEY_PET_IMG);
     localStorage.removeItem(STORAGE_KEY_PET_IMG_MODE);
     petImgInput.value = "";
     petImgAdjustMode = false;
@@ -1168,6 +1478,9 @@
     petOverlayWrap.style.display = "none";
     removePetOverlayHandle();
     updatePetImgHint();
+    try {
+      await idbDeleteImage("petImage");
+    } catch (e) {}
   });
 
   function renderPetOverlayHandle() {
@@ -1386,43 +1699,6 @@
     saveSizePct(currentSizePct);
   });
 
-  // 角のハンドルをドラッグして拡縮
-  let resizing = false;
-  let resizeStartX = 0;
-  let resizeStartWidthPx = 0;
-
-  function onResizeDown(e) {
-    resizing = true;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    resizeStartX = clientX;
-    resizeStartWidthPx = stage.getBoundingClientRect().width;
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  function onResizeMove(e) {
-    if (!resizing) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const deltaX = clientX - resizeStartX;
-    const outerWidth = stageOuter.getBoundingClientRect().width;
-    const newWidthPx = resizeStartWidthPx + deltaX * 2; // 中心基準っぽく感じるよう倍で反映
-    const newPct = (newWidthPx / outerWidth) * 100;
-    currentSizePct = applySizePct(newPct);
-  }
-
-  function onResizeUp() {
-    if (!resizing) return;
-    resizing = false;
-    saveSizePct(currentSizePct);
-  }
-
-  resizeHandle.addEventListener("mousedown", onResizeDown);
-  resizeHandle.addEventListener("touchstart", onResizeDown, { passive: false });
-  window.addEventListener("mousemove", onResizeMove);
-  window.addEventListener("touchmove", onResizeMove, { passive: false });
-  window.addEventListener("mouseup", onResizeUp);
-  window.addEventListener("touchend", onResizeUp);
-
   // ---- ダークモード（吹き出し黒、テキスト白）----
   const STORAGE_KEY_DARK = "kura_bubble_dark_mode";
   const darkModeBtn = document.getElementById("darkModeBtn");
@@ -1444,6 +1720,370 @@
     localStorage.setItem(STORAGE_KEY_DARK, String(isDarkMode));
     applyDarkMode(isDarkMode);
   });
+
+  // ---- 日記ログ（時間帯ごとにランダムな一言を記録）----
+  const diaryLog = document.getElementById("diaryLog");
+  const STORAGE_KEY_DIARY_ENTRIES = "kura_bubble_diary_entries";
+  const STORAGE_KEY_DIARY_NEXT = "kura_bubble_diary_next";
+  const DIARY_INTERVAL_MS = 15 * 60 * 1000;
+  const DIARY_MAX_CATCHUP = 20; // 一度に遡って埋める最大件数（=最大100分ぶん）
+
+  const DEFAULT_DIARY_CATEGORIES = [
+    { id: "cat-cooking", name: "料理", timeBand: "always", words: ["卵焼き", "ピクルス", "ラーメン"], contents: ["を作った。", "を食べた。"] },
+    { id: "cat-day", name: "昼のひととき", timeBand: "day", words: ["部屋", "外"], contents: ["で本を読んでいた。", "でコーヒーを飲んだ。"] },
+    { id: "cat-evening", name: "夜のひととき", timeBand: "evening", words: ["一日", "youtube"], contents: ["を振り返っている。", "を見ている。"] },
+    { id: "cat-brush", name: "歯みがき", timeBand: "brush", words: [], contents: ["歯磨きした。"] },
+    { id: "cat-sleep", name: "睡眠", timeBand: "sleep", words: [], contents: ["眠っている。"] },
+  ];
+  const STORAGE_KEY_DIARY_CATEGORIES = "kura_bubble_diary_categories";
+
+  const DEFAULT_LINE_CATEGORIES = [];
+  const STORAGE_KEY_LINE_CATEGORIES = "kura_bubble_line_categories";
+
+  // ---- カテゴリ組み合わせ（ワード×内容）方式の共通システム ----
+  // 日記ログとキャラのセリフの両方で使う（保存先とデフォルト、表示先の要素だけ差し替える）
+  function createCategorySystem(options) {
+    const { storageKey, defaults, listEl, newNameEl, addBtnEl, idPrefix } = options;
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        const arr = raw ? JSON.parse(raw) : null;
+        if (Array.isArray(arr)) return arr;
+      } catch (e) {}
+      return defaults.map((c) => ({ ...c, words: c.words.slice(), contents: c.contents.slice() }));
+    }
+    function save() {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(categories));
+      } catch (e) {}
+    }
+
+    let categories = load();
+    let idCounter = 0;
+    function makeId() {
+      return idPrefix + "-" + Date.now() + "-" + (idCounter++);
+    }
+
+    function buildSubListRow(cat, field, placeholder) {
+      const row = document.createElement("div");
+      row.className = "row";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = placeholder;
+      const addBtn = document.createElement("button");
+      addBtn.textContent = "追加";
+      addBtn.addEventListener("click", () => {
+        const v = input.value.trim();
+        if (!v) return;
+        cat[field].push(v);
+        save();
+        input.value = "";
+        render();
+      });
+      row.appendChild(input);
+      row.appendChild(addBtn);
+      return row;
+    }
+
+    function buildSubList(cat, field) {
+      const list = document.createElement("div");
+      list.className = "line-list";
+      cat[field].forEach((val, i) => {
+        const item = document.createElement("div");
+        item.className = "line-item";
+
+        const span = document.createElement("span");
+        span.textContent = val;
+
+        const editInput = document.createElement("input");
+        editInput.type = "text";
+        editInput.value = val;
+        editInput.style.display = "none";
+
+        const editBtn = document.createElement("button");
+        editBtn.textContent = "編集";
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "削除";
+
+        let isEditing = false;
+        editBtn.addEventListener("click", () => {
+          if (!isEditing) {
+            isEditing = true;
+            span.style.display = "none";
+            editInput.style.display = "inline-block";
+            editInput.focus();
+            editInput.select();
+            editBtn.textContent = "保存";
+          } else {
+            const newVal = editInput.value.trim();
+            if (newVal) {
+              cat[field][i] = newVal;
+              save();
+              span.textContent = newVal;
+            }
+            isEditing = false;
+            span.style.display = "inline";
+            editInput.style.display = "none";
+            editBtn.textContent = "編集";
+          }
+        });
+
+        delBtn.addEventListener("click", () => {
+          cat[field].splice(i, 1);
+          save();
+          render();
+        });
+
+        item.appendChild(span);
+        item.appendChild(editInput);
+        item.appendChild(editBtn);
+        item.appendChild(delBtn);
+        list.appendChild(item);
+      });
+      return list;
+    }
+
+    const expandedIds = new Set();
+
+    function render() {
+      listEl.innerHTML = "";
+      categories.forEach((cat) => {
+        const isExpanded = expandedIds.has(cat.id);
+
+        const card = document.createElement("div");
+        card.className = "diary-cat-card" + (isExpanded ? "" : " collapsed");
+
+        const head = document.createElement("div");
+        head.className = "diary-cat-head";
+
+        const toggleBtn = document.createElement("button");
+        toggleBtn.className = "cat-toggle-btn";
+        toggleBtn.textContent = isExpanded ? "▾" : "▸";
+        toggleBtn.title = isExpanded ? "閉じて隠す" : "開いて中身を見る";
+        toggleBtn.addEventListener("click", () => {
+          if (expandedIds.has(cat.id)) {
+            expandedIds.delete(cat.id);
+          } else {
+            expandedIds.add(cat.id);
+          }
+          render();
+        });
+
+        const nameInput = document.createElement("input");
+        nameInput.type = "text";
+        nameInput.className = "cat-name";
+        nameInput.value = cat.name;
+        nameInput.addEventListener("change", () => {
+          const v = nameInput.value.trim();
+          if (v) {
+            cat.name = v;
+            save();
+          } else {
+            nameInput.value = cat.name;
+          }
+        });
+
+        const bandSelect = document.createElement("select");
+        TIME_BAND_OPTIONS.forEach((opt) => {
+          const o = document.createElement("option");
+          o.value = opt.value;
+          o.textContent = opt.label;
+          if (opt.value === cat.timeBand) o.selected = true;
+          bandSelect.appendChild(o);
+        });
+        bandSelect.addEventListener("change", () => {
+          cat.timeBand = bandSelect.value;
+          save();
+        });
+
+        const delCatBtn = document.createElement("button");
+        delCatBtn.textContent = "カテゴリ削除";
+        delCatBtn.addEventListener("click", () => {
+          if (!confirm(`「${cat.name}」を削除する？中のワードと内容も消えるよ。`)) return;
+          categories = categories.filter((c) => c.id !== cat.id);
+          expandedIds.delete(cat.id);
+          save();
+          render();
+        });
+
+        head.appendChild(toggleBtn);
+        head.appendChild(nameInput);
+        head.appendChild(bandSelect);
+        head.appendChild(delCatBtn);
+        card.appendChild(head);
+
+        if (isExpanded) {
+          const wordLabel = document.createElement("div");
+          wordLabel.className = "diary-cat-sub-label";
+          wordLabel.textContent = "ワード（空でもOK。空だと「内容」がそのまま使われるよ）";
+          card.appendChild(wordLabel);
+          card.appendChild(buildSubListRow(cat, "words", "例：卵焼き"));
+          card.appendChild(buildSubList(cat, "words"));
+
+          const contentLabel = document.createElement("div");
+          contentLabel.className = "diary-cat-sub-label";
+          contentLabel.textContent = "内容（ワードの後ろに続く部分。例：を作った。）";
+          card.appendChild(contentLabel);
+          card.appendChild(buildSubListRow(cat, "contents", "例：を作った。"));
+          card.appendChild(buildSubList(cat, "contents"));
+        }
+
+        listEl.appendChild(card);
+      });
+    }
+
+    addBtnEl.addEventListener("click", () => {
+      const name = newNameEl.value.trim();
+      if (!name) return;
+      const newCat = { id: makeId(), name, timeBand: "always", words: [], contents: [] };
+      categories.push(newCat);
+      expandedIds.add(newCat.id);
+      save();
+      newNameEl.value = "";
+      render();
+    });
+
+    render();
+
+    return {
+      getCategories: () => categories,
+    };
+  }
+
+  const diaryCategorySystem = createCategorySystem({
+    storageKey: STORAGE_KEY_DIARY_CATEGORIES,
+    defaults: DEFAULT_DIARY_CATEGORIES,
+    listEl: document.getElementById("diaryCatList"),
+    newNameEl: document.getElementById("diaryCatNewName"),
+    addBtnEl: document.getElementById("diaryCatAddBtn"),
+    idPrefix: "diarycat",
+  });
+
+  const lineCategorySystem = createCategorySystem({
+    storageKey: STORAGE_KEY_LINE_CATEGORIES,
+    defaults: DEFAULT_LINE_CATEGORIES,
+    listEl: document.getElementById("lineCatList"),
+    newNameEl: document.getElementById("lineCatNewName"),
+    addBtnEl: document.getElementById("lineCatAddBtn"),
+    idPrefix: "linecat",
+  });
+
+  function pickDiaryText(date) {
+    const band = getTimeBand(date);
+    const eligible = diaryCategorySystem.getCategories().filter(
+      (c) => c.contents.length > 0 && (c.timeBand === "always" || c.timeBand === band)
+    );
+    if (eligible.length === 0) return null;
+    const cat = eligible[Math.floor(Math.random() * eligible.length)];
+    const content = cat.contents[Math.floor(Math.random() * cat.contents.length)];
+    if (cat.words.length === 0) return content;
+    const word = cat.words[Math.floor(Math.random() * cat.words.length)];
+    return word + content;
+  }
+
+  function loadDiaryEntries() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY_DIARY_ENTRIES);
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function saveDiaryEntries() {
+    try {
+      localStorage.setItem(STORAGE_KEY_DIARY_ENTRIES, JSON.stringify(diaryEntries.slice(-40)));
+    } catch (e) {}
+  }
+  function loadNextTick() {
+    const raw = localStorage.getItem(STORAGE_KEY_DIARY_NEXT);
+    return raw ? new Date(raw) : null;
+  }
+  function saveNextTick(date) {
+    localStorage.setItem(STORAGE_KEY_DIARY_NEXT, date.toISOString());
+  }
+
+  let diaryEntries = loadDiaryEntries();
+
+  function renderDiaryEntryDOM(date, text) {
+    const hh = String(date.getHours()).padStart(2, "0");
+    const mm = String(date.getMinutes()).padStart(2, "0");
+    const entry = document.createElement("div");
+    entry.className = "diary-entry";
+    const timeEl = document.createElement("span");
+    timeEl.className = "diary-time";
+    timeEl.textContent = `${hh}:${mm}`;
+    entry.appendChild(timeEl);
+    entry.appendChild(document.createTextNode(text));
+    diaryLog.appendChild(entry);
+    while (diaryLog.children.length > 14) {
+      diaryLog.removeChild(diaryLog.firstChild);
+    }
+  }
+
+  // ページを開いた時点で、これまでの記録をログに復元しておく
+  diaryEntries.slice(-14).forEach((e) => renderDiaryEntryDOM(new Date(e.t), e.text));
+
+  function addDiaryEntry(date, text) {
+    diaryEntries.push({ t: date.toISOString(), text: text });
+    saveDiaryEntries();
+    renderDiaryEntryDOM(date, text);
+  }
+
+  function generateDiaryEntryAt(date) {
+    const text = pickDiaryText(date);
+    if (!text) return;
+    addDiaryEntry(date, text);
+  }
+
+  // スリープや離席で時間が飛んでいても、経過時間ぶんの記録を後から埋める
+  function runDiaryCatchUp() {
+    const now = new Date();
+    let nextTick = loadNextTick();
+
+    if (!nextTick) {
+      generateDiaryEntryAt(now);
+      saveNextTick(new Date(now.getTime() + DIARY_INTERVAL_MS));
+      return;
+    }
+
+    if (nextTick.getTime() > now.getTime()) return;
+
+    const totalTicks = Math.floor((now.getTime() - nextTick.getTime()) / DIARY_INTERVAL_MS) + 1;
+
+    if (totalTicks > DIARY_MAX_CATCHUP) {
+      addDiaryEntry(nextTick, "……気づけば、ずいぶん時間が経っていたみたい。");
+      nextTick = new Date(now.getTime() - (DIARY_MAX_CATCHUP - 1) * DIARY_INTERVAL_MS);
+    }
+
+    let cursor = nextTick;
+    for (let i = 0; i < Math.min(totalTicks, DIARY_MAX_CATCHUP); i++) {
+      generateDiaryEntryAt(cursor);
+      cursor = new Date(cursor.getTime() + DIARY_INTERVAL_MS);
+    }
+    saveNextTick(cursor);
+  }
+
+  runDiaryCatchUp();
+  setInterval(runDiaryCatchUp, DIARY_INTERVAL_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") runDiaryCatchUp();
+  });
+  window.addEventListener("focus", runDiaryCatchUp);
+
+  // ---- セリフ／ログの大分類トグル ----
+  function setupSectionToggle(headerId, bodyId) {
+    const header = document.getElementById(headerId);
+    const body = document.getElementById(bodyId);
+    header.addEventListener("click", () => {
+      const collapsed = body.classList.toggle("collapsed");
+      header.classList.toggle("collapsed", collapsed);
+    });
+  }
+  setupSectionToggle("lineGroupToggle", "lineGroupBody");
+  setupSectionToggle("diaryGroupToggle", "diaryGroupBody");
 
   // ---- 初回表示 ----
   window.addEventListener("load", () => {
