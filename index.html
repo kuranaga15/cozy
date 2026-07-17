@@ -40,6 +40,7 @@
     z-index: 3;
     cursor: pointer;
     border-radius: 14px;
+    touch-action: none;
   }
 
   .pet-zone.edit-mode {
@@ -558,6 +559,18 @@
     </div>
 
     <div class="section">
+      <h2 class="section-toggle collapsed" id="diaryGroupToggle">ログ <span class="chevron">▾</span></h2>
+      <div class="section-body collapsed" id="diaryGroupBody">
+        <div class="hint">「カテゴリ」を作って、その中に「ワード」（例：卵焼き、ピクルス）と「内容」（例：を作った。を食べた。）を登録すると、ランダムに組み合わさってログに流れるよ。カテゴリ名をクリックすると中身が開くよ。ワードが空っぽのカテゴリは、内容だけがそのまま使われる（「歯磨きした。」のような固定の一言に便利）。時間帯を指定すると、その時間だけ使われるようになるよ。</div>
+        <div class="row" style="margin-top:10px;">
+          <input type="text" id="diaryCatNewName" placeholder="新しいカテゴリ名（例：料理）">
+          <button id="diaryCatAddBtn">カテゴリを追加</button>
+        </div>
+        <div class="diary-cat-list" id="diaryCatList"></div>
+      </div>
+    </div>
+
+    <div class="section">
       <h2>撫でている時の画像</h2>
       <div class="row">
         <input type="file" id="petImgInput" accept="image/*">
@@ -588,18 +601,6 @@
         </div>
         <div class="line-list" id="zoneLineList"></div>
         <div class="hint">セリフが1つもない場所は、ハートだけ出てセリフは表示されないよ。</div>
-      </div>
-    </div>
-
-    <div class="section">
-      <h2 class="section-toggle collapsed" id="diaryGroupToggle">ログ <span class="chevron">▾</span></h2>
-      <div class="section-body collapsed" id="diaryGroupBody">
-        <div class="hint">「カテゴリ」を作って、その中に「ワード」（例：卵焼き、ピクルス）と「内容」（例：を作った。を食べた。）を登録すると、ランダムに組み合わさってログに流れるよ。カテゴリ名をクリックすると中身が開くよ。ワードが空っぽのカテゴリは、内容だけがそのまま使われる（「歯磨きした。」のような固定の一言に便利）。時間帯を指定すると、その時間だけ使われるようになるよ。</div>
-        <div class="row" style="margin-top:10px;">
-          <input type="text" id="diaryCatNewName" placeholder="新しいカテゴリ名（例：料理）">
-          <button id="diaryCatAddBtn">カテゴリを追加</button>
-        </div>
-        <div class="diary-cat-list" id="diaryCatList"></div>
       </div>
     </div>
 
@@ -903,13 +904,14 @@
         el.addEventListener(
           "touchstart",
           (e) => {
+            e.preventDefault();
             beginPetting();
             const line = pickZoneLine(zone);
             if (line) showBubbleText(line);
             const touch = e.touches[0];
             if (touch) spawnHeart(touch.clientX, touch.clientY);
           },
-          { passive: true }
+          { passive: false }
         );
       }
       stage.appendChild(el);
