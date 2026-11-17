@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clock & Progress Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background-color: #1c1c1c; /* 背景色 */
+      color: #ffffff; /* 文字色 */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    canvas {
+      margin-bottom: 20px;
+    }
+    .time-display {
+      font-size: 20px;
+      font-family: Arial, sans-serif;
+      color: #ffffff; /* 現在時刻の色 */
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .progress-container {
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: flex-start; /* 左揃え */
+      align-items: center;
+      width: 100%;
+      max-width: 400px;
+    }
+    .progress-title {
+      font-size: 18px;
+      width: 50px; /* タイトルの幅を固定して揃える */
+    }
+    .progress-percentage {
+      font-size: 14px; /* パーセントテキストを小さく */
+      color: #ffffff; /* 数字の色 */
+      margin-left: 10px; /* ゲージとの間隔を調整 */
+    }
+    .progress-bar {
+      position: relative;
+      width: 100%;
+      max-width: 300px;
+      height: 6px; /* ゲージの高さを細く調整 */
+      background-color: #333; /* ゲージの背景色 */
+      border-radius: 3px;
+      overflow: hidden;
+      margin-left: 10px;
+    }
+    .progress-fill {
+      height: 100%;
+      background-color: #fb715e; /* ゲージの色を赤に変更 */
+      border-radius: 3px 0 0 3px;
+      transition: width 0.3s ease;
+    }
+  </style>
+</head>
+<body>
+  <!-- 時計 -->
+  <canvas id="clock" width="200" height="200"></canvas>
+  <div class="time-display" id="timeDisplay"></div>
+
+  <!-- ゲージ -->
+  <div class="progress-container">
+    <div class="progress-title">year</div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="yearProgress"></div>
+    </div>
+    <div class="progress-percentage" id="yearPercentage"></div>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-title">month</div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="monthProgress"></div>
+    </div>
+    <div class="progress-percentage" id="monthPercentage"></div>
+  </div>
+
+  <script>
+    // 時計の描画
+    const canvas = document.getElementById('clock');
+    const ctx = canvas.getContext('2d');
+    const radius = canvas.width / 2;
+    const timeDisplay = document.getElementById('timeDisplay');
+
+    function drawClock() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.translate(radius, radius);
+      drawMarkers(ctx, radius);
+      drawTime(ctx, radius);
+      ctx.translate(-radius, -radius);
+      updateTimeDisplay();
+    }
+
+    function drawMarkers(ctx, radius) {
+      ctx.strokeStyle = '#ffffff'; // 目盛りの色
+      ctx.lineWidth = 2;
+
+      for (let i = 0; i < 12; i++) { // 5分ごとの長い目盛りだけを描画
+        const angle = (i * Math.PI) / 6;
+        const start = radius * 0.95;
+        const end = radius * 0.80;
+
+        ctx.beginPath();
+        ctx.moveTo(start * Math.cos(angle), start * Math.sin(angle));
+        ctx.lineTo(end * Math.cos(angle), end * Math.sin(angle));
+        ctx.stroke();
+      }
+    }
+
+    function drawTime(ctx, radius) {
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+
+      // 時針
+      const hourAngle = ((hour % 12 + minute / 60) * Math.PI) / 6;
+      drawHand(ctx, hourAngle, radius * 0.5, 3);
+
+      // 分針（少し長く調整）
+      const minuteAngle = (minute * Math.PI) / 30;
+      drawHand(ctx, minuteAngle, radius * 0.8, 3);
+    }
+
+    function drawHand(ctx, pos, length, width) {
+      ctx.beginPath();
+      ctx.lineWidth = width;
+      ctx.strokeStyle = '#ffffff'; // 針の色
+      ctx.moveTo(0, 0);
+      ctx.rotate(pos);
+      ctx.lineTo(0, -length);
+      ctx.stroke();
+      ctx.rotate(-pos);
+    }
+
+    function updateTimeDisplay() {
+      const now = new Date();
+      const hours = String(now.getHours()).padStart(2, '0'); // 24時間表記
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+
+      timeDisplay.textContent = `${hours}:${minutes}`;
+    }
+
+    // ゲージの更新
+    function updateProgress() {
+      const now = new Date();
+
+      // 年の進捗計算
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const endOfYear = new Date(now.getFullYear() + 1, 0, 1);
+      const yearProgress = ((now - startOfYear) / (endOfYear - startOfYear)) * 100;
+
+      // 月の進捗計算
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const monthProgress = ((now - startOfMonth) / (endOfMonth - startOfMonth)) * 100;
+
+      // 年のゲージ更新
+      const yearProgressBar = document.getElementById('yearProgress');
+      const yearPercentage = document.getElementById('yearPercentage');
+      yearProgressBar.style.width = `${yearProgress.toFixed(1)}%`;
+      yearPercentage.textContent = `${yearProgress.toFixed(1)}%`; // 経過した日数を表示
+
+      // 月のゲージ更新
+      const monthProgressBar = document.getElementById('monthProgress');
+      const monthPercentage = document.getElementById('monthPercentage');
+      monthProgressBar.style.width = `${monthProgress.toFixed(1)}%`;
+      monthPercentage.textContent = `${monthProgress.toFixed(1)}%`; // 経過した日数を表示
+    }
+
+    // 初期化と定期更新
+    drawClock();
+    updateProgress();
+    setInterval(drawClock, 1000); // 時計を1秒ごとに更新
+    setInterval(updateProgress, 1000 * 60); // ゲージを1分ごとに更新
+  </script>
+</body>
+</html>
